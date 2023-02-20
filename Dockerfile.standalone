@@ -13,6 +13,9 @@ RUN apt install -y cmake
 # Install librdkafka.
 RUN apt-get install -y libsasl2-dev libsasl2-modules libssl-dev librdkafka-dev
 
+# install python for test_in.py & test_out.py scripts
+RUN apt-get install -y python3 python3-pip
+
 # add the source and build files
 ADD CMakeLists.txt /cvdi-stream
 ADD ./src /cvdi-stream/src

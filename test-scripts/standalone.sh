@@ -64,7 +64,7 @@ echo "**************************"
 #docker rm ppm_kafka > /dev/null
 
 # Start the PPM in a new container.
-docker run --name ppm_kafka -v /tmp/docker-test/data:/ppm_data -it --rm -p '8080:8080' -d jpocvdp_ppm:latest /cvdi-stream/docker-test/ppm_standalone.sh > /dev/null
+docker run --name ppm_kafka -v /tmp/docker-test/data:/ppm_data -it --rm -p '8080:8080' -d jpo-cvdp_ppm:latest /cvdi-stream/docker-test/ppm_standalone.sh > /dev/null
 
 sleep 10
 

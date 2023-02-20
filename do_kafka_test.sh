@@ -3,11 +3,11 @@
 
 # Wait until Kafka creates our topics.
 while true; do
-    ntopics=$(docker exec jpocvdp_kafka_1 /opt/kafka/bin/kafka-topics.sh --list --zookeeper 172.17.0.1 | wc -l)
+    ntopics=$(docker exec jpo-cvdp_kafka_1 /opt/kafka/bin/kafka-topics.sh --list --zookeeper 172.17.0.1 | wc -l)
 
     if [[ $ntopics == "4" ]]; then 
         echo 'Found 4 topics:'
-        docker exec jpocvdp_kafka_1 /opt/kafka/bin/kafka-topics.sh --list --zookeeper 172.17.0.1 2> /dev/null
+        docker exec jpo-cvdp_kafka_1 /opt/kafka/bin/kafka-topics.sh --list --zookeeper 172.17.0.1 2> /dev/null
         
         break   
     fi
@@ -69,3 +69,5 @@ echo ""
 
 sleep 1
 ./test-scripts/standalone_multi.sh $MAP_FILE config/bsm-test/c6.properties config/tim-test/c3.properties $BSM_DATA_FILE $TIM_DATA_FILE 48 23
+
+docker-compose stop
