@@ -16,7 +16,7 @@ object. **Each message should be on a separate line in the file.** **If a JSON o
 
 To run a series of configuration tests:
 
-    $ ./do_test.sh
+    $ ./do_kafka_test.sh
 
 **Running this command for the first time can take awhile, as the dependencies need to be built for the PPM image.**
 To run the standalone PPM test using Docker containers, from the jpo-cvdp root directory:
