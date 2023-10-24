@@ -42,6 +42,11 @@ startPPMContainer() {
     while [ $(docker logs $PPM_CONTAINER_NAME | wc -l) -lt 100 ]; do
         sleep 1
         secondsWaited=$((secondsWaited+1))
+
+        if [ $secondsWaited -gt 30 ]; then
+            echo "30 seconds have passed. Container should be ready. Continuing."
+            break
+        fi
     done
     echo "$PPM_CONTAINER_NAME is ready after $secondsWaited seconds"
 
