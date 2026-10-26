@@ -26,6 +26,7 @@
 #ifndef CVDP_DI_ENTITY_HPP
 #define CVDP_DI_ENTITY_HPP
 
+#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <limits>
