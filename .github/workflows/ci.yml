@@ -1,9 +1,14 @@
 name: jpo-cvdp
-on: 
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, reopened, synchronize]
   push:
+    branches: [develop, master]
 
 jobs:
   jpo-cvdp:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     container:
       image: ubuntu:jammy-20230126
@@ -76,8 +81,8 @@ jobs:
           sonar.host.url=https://sonarcloud.io
           sonar.projectName=jpo-cvdp
           sonar.projectVersion=1.0
-          sonar.projectKey=usdot-jpo-ode_jpo-cvdp
-          sonar.organization=usdot-jpo-ode
+          sonar.projectKey=${{ github.repository_owner }}_jpo-cvdp
+          sonar.organization=${{ vars.SONAR_ORGANIZATION || github.repository_owner }}
           sonar.sources=.
           sonar.exclusions=src/ppm.cpp
           sonar.cfamily.build-wrapper-output=bw-output
@@ -92,9 +97,6 @@ jobs:
           sonar.sourceEncoding=UTF-8
           EOF
       - name: Run SonarScanner
-        if: github.event_name == 'pull_request' && github.repository_owner == 'usdot-jpo-ode'
-        uses: usdot-fhwa-stol/actions/sonar-scanner@main # This action runs the analysis using generated sonar gcov files and publish reports to respective sonarcloud project.
-        with:
-          sonar-properties-path: /tmp/sonar-scanner.properties
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
-          working-dir: $GITHUB_WORKSPACE                   
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: sonar-scanner -Dproject.settings=/tmp/sonar-scanner.properties
