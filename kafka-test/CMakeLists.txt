@@ -33,7 +33,7 @@
 #      Laboratory
 #      865-804-5161 (mobile)
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.16)
 project(CVDIGeofenceTest)
 
 set(TEST_CURRENT_DIR ${CMAKE_CURRENT_SOURCE_DIR})

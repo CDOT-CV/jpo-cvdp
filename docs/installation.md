@@ -79,6 +79,29 @@ $ sudo apt install git
 
 ### 2. Install librdkafka
 
+Use **librdkafka 1.8.2 or later**, with matching development and runtime packages.
+Confluent Cloud rejects deprecated client protocols starting February 2026;
+older packages, including Alpine 3.12's librdkafka 1.4.4, are incompatible.
+See [Confluent's client compatibility requirements](https://docs.confluent.io/cloud/current/client-apps/deprecate-how-to.html).
+CMake checks the minimum header version during configuration.
+
+All three project Dockerfiles use Alpine 3.22 packages and require this minimum.
+The dev container uses Debian 12 (Bookworm), which supplies librdkafka 2.0.2.
+CI builds the pinned upstream release v2.10.0. For manual installation, use a
+distribution that supplies compatible packages (for example, Debian 12 or
+Ubuntu 22.04 or later); check the installed version before building:
+
+```bash
+pkg-config --modversion rdkafka
+```
+
+After this upgrade, rebuild the image and recreate the dev container. For GKE,
+publish the rebuilt image under a new tag and update the deployment to use it.
+Verify the deployed image with `apk list --installed librdkafka librdkafka-dev`
+and confirm that input messages are consumed and retained messages are published.
+API version negotiation uses librdkafka defaults; no broker fallback override is
+needed for Confluent Cloud.
+
 Talking to a Kafka instance, subscribing and producting to topics requires the use of a third party library. We use the librdkafka library as a c/c++ implementation. This can be installed as a package.
 
 ```bash
@@ -88,7 +111,7 @@ $ sudo apt install -y libssl-dev
 $ sudo apt install -y librdkafka-dev
 ```
 
-### 3. Install [CMake](https://cmake.org), g++ & make to build the PPM
+### 3. Install [CMake](https://cmake.org) 3.16 or later, g++ & make to build the PPM
 
 ```bash
 $ sudo apt install cmake

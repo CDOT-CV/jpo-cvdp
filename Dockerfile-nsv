@@ -1,5 +1,5 @@
 # === RUNTIME DEPENDENCIES IMAGE ===
-FROM alpine:3.12 as runtime-deps
+FROM alpine:3.22 as runtime-deps
 USER root
 
 WORKDIR /cvdi-stream
@@ -10,8 +10,9 @@ RUN apk update
 # add runtime dependencies
 RUN apk add --upgrade --no-cache \
     bash \
-    librdkafka \
-    librdkafka-dev
+    ca-certificates \
+    'librdkafka>=1.8.2' \
+    'librdkafka-dev>=1.8.2'
 
 # === BUILDER IMAGE ===
 FROM runtime-deps as builder

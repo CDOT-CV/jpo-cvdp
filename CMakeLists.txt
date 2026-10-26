@@ -1,8 +1,23 @@
 # Minimum required version of CMake
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.16)
 
 # Project name
 project(ppm)
+
+# Confluent Cloud rejects protocols used by older librdkafka clients.
+include(CheckCXXSourceCompiles)
+set(CMAKE_REQUIRED_INCLUDES "/usr/local/include")
+check_cxx_source_compiles("
+#include <librdkafka/rdkafka.h>
+#if RD_KAFKA_VERSION < 0x010802ff
+#error librdkafka 1.8.2 or later is required
+#endif
+int main() { return 0; }
+" RDKAFKA_VERSION_SUPPORTED)
+unset(CMAKE_REQUIRED_INCLUDES)
+if(NOT RDKAFKA_VERSION_SUPPORTED)
+    message(FATAL_ERROR "Install librdkafka development headers >= 1.8.2 and matching runtime libraries (required for Confluent Cloud).")
+endif()
 
 # Set C++ standard to 11 and make it required
 set(CMAKE_CXX_STANDARD 11)
