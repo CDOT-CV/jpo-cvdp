@@ -42,8 +42,10 @@ jobs:
           build-wrapper-linux-x86-64 --out-dir $GITHUB_WORKSPACE/bw-output ./build.sh     
           mkdir coverage
           cd coverage 
-          gcov $GITHUB_WORKSPACE/cv-lib/src/*.cpp --object-directory /__w/jpo-cvdp/jpo-cvdp/build/cv-lib/CMakeFiles/CVLib.dir/src/
-          gcov $GITHUB_WORKSPACE/src/*.cpp --object-directory /__w/jpo-cvdp/jpo-cvdp/build/CMakeFiles/ppm_tests.dir/src/              
+          # Collect only files compiled into the coverage targets, including nested sources.
+          find "$GITHUB_WORKSPACE/build/cv-lib/CMakeFiles/CVLib.dir" \
+            "$GITHUB_WORKSPACE/build/CMakeFiles/ppm_tests.dir" \
+            -type f -name '*.gcno' -exec gcov --preserve-paths {} +
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4 # This action is used to capture the test artifacts and exits if no files are found
         with:
