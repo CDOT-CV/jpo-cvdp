@@ -85,31 +85,50 @@ older packages, including Alpine 3.12's librdkafka 1.4.4, are incompatible.
 See [Confluent's client compatibility requirements](https://docs.confluent.io/cloud/current/client-apps/deprecate-how-to.html).
 CMake checks the minimum header version during configuration.
 
-All three project Dockerfiles use Alpine 3.22 packages and require this minimum.
-The dev container uses Debian 12 (Bookworm), which supplies librdkafka 2.0.2.
-CI builds the pinned upstream release v2.10.0. For manual installation, use a
-distribution that supplies compatible packages (for example, Debian 12 or
-Ubuntu 22.04 or later); check the installed version before building:
+All three application Dockerfiles use Alpine 3.24. The development container uses
+Debian 13 (Trixie), and CI uses Ubuntu 26.04 LTS. Each environment builds
+**librdkafka 2.16.0** using [the shared installer](../scripts/install_librdkafka.sh),
+so distribution package versions cannot leave one environment on an older client.
+The installer pins the latest stable upstream release verified in October 2026;
+update its version when adopting a newer tested release. TLS, SASL, curl, and
+compression libraries come from the operating system's packages.
+The Docker workflow builds all three application variants and the dev container,
+then runs the existing unit suite in each environment.
+
+References: [Alpine releases](https://alpinelinux.org/releases/),
+[Debian releases](https://www.debian.org/releases/),
+[Ubuntu releases](https://wiki.ubuntu.com/Releases), and
+[librdkafka 2.16.0](https://github.com/confluentinc/librdkafka/releases/tag/v2.16.0).
+
+For a manual Debian/Ubuntu build, install the build prerequisites below. After
+cloning the repository, install the same Kafka client as the containers:
 
 ```bash
+sudo apt-get update
+sudo apt-get install -y build-essential cmake git pkg-config ca-certificates \
+    libcurl4-openssl-dev libsasl2-dev libsasl2-modules libssl-dev \
+    liblz4-dev libzstd-dev zlib1g-dev
+sudo sh scripts/install_librdkafka.sh
+sudo ldconfig
 pkg-config --modversion rdkafka
 ```
 
-After this upgrade, rebuild the image and recreate the dev container. For GKE,
-publish the rebuilt image under a new tag and update the deployment to use it.
-Verify the deployed image with `apk list --installed librdkafka librdkafka-dev`
-and confirm that input messages are consumed and retained messages are published.
-API version negotiation uses librdkafka defaults; no broker fallback override is
-needed for Confluent Cloud.
-
-Talking to a Kafka instance, subscribing and producting to topics requires the use of a third party library. We use the librdkafka library as a c/c++ implementation. This can be installed as a package.
+After upgrading, rebuild the application image and recreate the dev container.
+Its build context is the repository root (`docker build -f .devcontainer/Dockerfile .`).
+For GKE, publish the rebuilt image under a new tag and update the deployment.
+The Kafka library is installed from source under `/usr/local`, so `apk list`
+will not report its version. Verify the linked client using the image's test tool:
 
 ```bash
-$ sudo apt install -y libsasl2-dev 
-$ sudo apt install -y libsasl2-modules
-$ sudo apt install -y libssl-dev 
-$ sudo apt install -y librdkafka-dev
+docker run --rm <image> /cvdi-stream-build/kafka-test/kafka_tool
 ```
+
+Running without arguments prints usage, including the librdkafka version, and exits nonzero.
+Confirm that input messages are consumed and retained messages are published.
+API version negotiation uses librdkafka defaults and no broker fallback override is
+needed for Confluent Cloud.
+
+Rebuild for OS security fixes and review upstream releases.
 
 ### 3. Install [CMake](https://cmake.org) 3.16 or later, g++ & make to build the PPM
 
