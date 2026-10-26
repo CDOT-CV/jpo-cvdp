@@ -66,11 +66,11 @@ jobs:
           sonar.projectKey=${{ github.repository_owner }}_jpo-cvdp
           sonar.organization=${{ vars.SONAR_ORGANIZATION || github.repository_owner }}
           sonar.sources=.
-          sonar.exclusions=src/ppm.cpp
           sonar.cfamily.build-wrapper-output=bw-output
           sonar.cfamily.gcov.reportsPath=/__w/jpo-cvdp/jpo-cvdp/coverage/
-          sonar.sonar.projectBaseDir=/home/runner/work/jpo-cvdp/jpo-cvdp/
-          sonar.exclusions=**/*.java
+          sonar.projectBaseDir=$GITHUB_WORKSPACE
+          # Build artifacts are inputs to coverage analysis, not additional source files.
+          sonar.exclusions=**/*.java,build/**,bw-output/**,coverage/**
           sonar.coverage.exclusions=**/*.java
           # Set Git as SCM sensor
           sonar.scm.disabled=true
