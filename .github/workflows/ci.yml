@@ -11,7 +11,7 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     container:
-      image: ubuntu:jammy-20230126
+      image: ubuntu:26.04
       env:
         REDACTION_PROPERTIES_PATH: "/__w/jpo-cvdp/jpo-cvdp/config/fieldsToRedact.txt"  # This env vairable is used to run ppm test
         BUILD_WRAPPER_OUT_DIR: "$GITHUB_WORKSPACE/bw-output" # This env variable is needed to run SonarSource/sonarcloud-github-c-cpp@v1
@@ -19,35 +19,17 @@ jobs:
     steps:
       - name: checkout code
         uses: actions/checkout@v4 # This action to checkout the code
-      - name: Install Deps
+      - name: Install build dependencies
         run: |
-          apt update
-          apt-get -y install sudo wget curl gnupg lsb-release gcovr unzip
-          sudo apt-get -y install software-properties-common
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-          sudo add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  stable"
-          sudo curl -L "https://github.com/docker/compose/releases/download/1.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          chmod +x /usr/local/bin/docker-compose
-          sudo apt-get -y update
-          sudo apt-get -y install docker-ce   
-          sudo apt-get install -y libcurl4-openssl-dev
-      - name: set up Cmake
-        uses: jwlawson/actions-setup-cmake@v2  # this action is used to setup and install Cmake with required versions
-        with:
-          cmake-version: '3.16'  
-      - name: install g++
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential cmake git pkg-config ca-certificates wget curl gnupg \
+            lsb-release gcovr unzip libcurl4-openssl-dev libsasl2-dev libsasl2-modules \
+            libssl-dev liblz4-dev libzstd-dev zlib1g-dev libprotobuf-dev protobuf-compiler
+      - name: Install librdkafka
         run: |
-          sudo apt-get -y install build-essential
-          sudo apt -y install cmake g++ libprotobuf-dev protobuf-compiler
-          sudo apt -y install apt-transport-https ca-certificates curl software-properties-common
-          export CXX="g++"          
-      - name: install librdkafka # This is to install librdkafka package
-        run: |
-          git clone --branch v2.10.0 --depth 1 https://github.com/confluentinc/librdkafka.git librdkafka
-          cd librdkafka
-          cmake -H. -B_cmake_build
-          cmake --build _cmake_build
-          cmake --build _cmake_build --target install  
+          sh scripts/install_librdkafka.sh
+          ldconfig
       - name: Install sonar-scanner and build-wrapper
         uses: sonarsource/sonarcloud-github-c-cpp@v3  # This Action Installs sonar cloud and build wrapper to run sonar scan analysis  
       - name: Build and Generate test coverage
