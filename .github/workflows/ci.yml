@@ -8,7 +8,6 @@ on:
 
 jobs:
   jpo-cvdp:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     container:
       image: ubuntu:26.04
@@ -57,7 +56,19 @@ jobs:
         with: 
           name: jpo-cvdp-buildwrapper-output
           path: /home/runner/work/jpo-cvdp/jpo-cvdp/bw-output       
+      - name: Check Sonar availability
+        id: sonar
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -n "$SONAR_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Generate sonar properties file
+        if: steps.sonar.outputs.enabled == 'true'
         run: |
           cat <<EOF > /tmp/sonar-scanner.properties
           sonar.host.url=https://sonarcloud.io
@@ -79,6 +90,7 @@ jobs:
           sonar.sourceEncoding=UTF-8
           EOF
       - name: Run SonarScanner
+        if: steps.sonar.outputs.enabled == 'true'
         uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e # v8.2.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
