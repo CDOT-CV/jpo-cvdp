@@ -33,7 +33,7 @@
 #      Laboratory
 #      865-804-5161 (mobile)
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.16)
 project(CVDIGeofenceTest)
 
 set(TEST_CURRENT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -44,4 +44,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Make a kafka tool to act as producer and consumer.
 # This is simulating the ODE.
 add_executable(kafka_tool "src/rdkafka_example.cpp")
-target_link_libraries(kafka_tool rdkafka++)
+# Also allow this tool to be configured independently of the parent project.
+find_path(RDKAFKA_INCLUDE_DIR NAMES librdkafka/rdkafkacpp.h)
+find_library(RDKAFKA_CPP_LIBRARY NAMES rdkafka++)
+if(NOT RDKAFKA_INCLUDE_DIR OR NOT RDKAFKA_CPP_LIBRARY)
+    message(FATAL_ERROR "Install librdkafka development headers and the C++ library, or set CMAKE_PREFIX_PATH.")
+endif()
+target_include_directories(kafka_tool PRIVATE "${RDKAFKA_INCLUDE_DIR}")
+target_link_libraries(kafka_tool "${RDKAFKA_CPP_LIBRARY}")

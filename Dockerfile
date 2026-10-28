@@ -1,5 +1,5 @@
 # === RUNTIME DEPENDENCIES IMAGE ===
-FROM alpine:3.12 as runtime-deps
+FROM alpine:3.24 AS runtime-deps
 USER root
 
 WORKDIR /cvdi-stream
@@ -10,22 +10,29 @@ RUN apk update
 # add runtime dependencies
 RUN apk add --upgrade --no-cache \
     bash \
-    librdkafka \
-    librdkafka-dev
+    ca-certificates \
+    libstdc++ \
+    libcurl \
+    libsasl \
+    libssl3 \
+    lz4-libs \
+    zlib \
+    zstd-libs
+
+# === KAFKA CLIENT BUILD ===
+FROM runtime-deps AS kafka-build
+RUN apk add --no-cache cmake g++ make git pkgconf \
+    curl-dev cyrus-sasl-dev openssl-dev lz4-dev zlib-dev zstd-dev
+COPY scripts/install_librdkafka.sh /tmp/install_librdkafka.sh
+RUN sh /tmp/install_librdkafka.sh
 
 # === BUILDER IMAGE ===
-FROM runtime-deps as builder
+FROM kafka-build AS builder
 USER root
 
 WORKDIR /cvdi-stream
 
 ENV DEBIAN_FRONTEND=noninteractive
-
-# add build dependencies
-RUN apk add --upgrade --no-cache --virtual .build-deps \
-    cmake \
-    g++ \
-    make
 
 # add the source and build files
 ADD CMakeLists.txt /cvdi-stream
@@ -44,6 +51,9 @@ FROM runtime-deps
 USER root
 
 WORKDIR /cvdi-stream
+
+# Copy the same Kafka client used to compile the application.
+COPY --from=kafka-build /usr/local/lib/librdkafka*.so.1 /usr/local/lib/
 
 # copy the built files from the builder
 COPY --from=builder /cvdi-stream-build/ /cvdi-stream-build/
