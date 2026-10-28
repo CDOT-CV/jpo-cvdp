@@ -78,7 +78,7 @@ jobs:
           sonar.organization=${{ vars.SONAR_ORGANIZATION || github.repository_owner }}
           sonar.sources=.
           sonar.cfamily.build-wrapper-output=bw-output
-          sonar.cfamily.gcov.reportsPath=/__w/jpo-cvdp/jpo-cvdp/coverage/
+          sonar.cfamily.gcov.reportsPath=$GITHUB_WORKSPACE/coverage
           sonar.projectBaseDir=$GITHUB_WORKSPACE
           # Build artifacts are inputs to coverage analysis, not additional source files.
           sonar.exclusions=**/*.java,build/**,bw-output/**,coverage/**
