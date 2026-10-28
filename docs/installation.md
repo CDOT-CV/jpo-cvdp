@@ -83,15 +83,18 @@ Use **librdkafka 1.8.2 or later**, with matching development and runtime package
 Confluent Cloud rejects deprecated client protocols starting February 2026;
 older packages, including Alpine 3.12's librdkafka 1.4.4, are incompatible.
 See [Confluent's client compatibility requirements](https://docs.confluent.io/cloud/current/client-apps/deprecate-how-to.html).
-CMake checks the minimum header version during configuration.
+CMake discovers the headers and C/C++ libraries and checks the minimum header
+version during configuration. For a nonstandard installation,
+pass its prefix with `cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/prefix`.
+The discovered paths are used for both the version check and application builds.
 
 All three application Dockerfiles use Alpine 3.24. The development container uses
 Debian 13 (Trixie), and CI uses Ubuntu 26.04 LTS. Each environment builds
 **librdkafka 2.16.0** using [the shared installer](../scripts/install_librdkafka.sh),
 so distribution package versions cannot leave one environment on an older client.
-The installer pins the latest stable upstream release verified in October 2026;
-update its version when adopting a newer tested release. TLS, SASL, curl, and
-compression libraries come from the operating system's packages.
+The installer fetches and checks out a pinned commit directly; the release version
+is recorded in a comment. Update the commit and comment when adopting a newer tested release.
+TLS, SASL, curl, and compression libraries come from the operating system's packages.
 The Docker workflow builds all three application variants and the dev container,
 then runs the existing unit suite in each environment.
 
