@@ -57,7 +57,7 @@ USER root
 WORKDIR /cvdi-stream
 
 # Copy the same Kafka client used to compile the application.
-COPY --from=kafka-build /usr/local/ /usr/local/
+COPY --from=kafka-build /usr/local/lib/librdkafka*.so.1 /usr/local/lib/
 
 # copy the built files from the builder
 COPY --from=builder /cvdi-stream-build/ /cvdi-stream-build/
