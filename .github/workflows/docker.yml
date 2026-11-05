@@ -9,3 +9,31 @@ on:
 jobs:
   build:
     uses: usdot-jpo-ode/actions/.github/workflows/docker.yml@main
+
+  compatibility:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dockerfile: [Dockerfile, Dockerfile.testing, Dockerfile-nsv, .devcontainer/Dockerfile]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build container
+        run: |
+          docker build -f "${{ matrix.dockerfile }}" -t cvdp-compatibility \
+            --build-arg PPM_CONFIG_FILE=ppmBsm.properties \
+            --build-arg PPM_MAP_FILE=CO-Motorways.edges .
+      - name: Test application image
+        if: matrix.dockerfile != '.devcontainer/Dockerfile'
+        run: |
+          docker run --rm -w /cvdi-stream-build \
+            -e REDACTION_PROPERTIES_PATH=/cvdi-stream/config/fieldsToRedact.txt \
+            cvdp-compatibility /cvdi-stream-build/ppm_tests
+      - name: Build and test in development container
+        if: matrix.dockerfile == '.devcontainer/Dockerfile'
+        run: |
+          docker run --rm \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/src,readonly" \
+            -e REDACTION_PROPERTIES_PATH=/src/config/fieldsToRedact.txt \
+            cvdp-compatibility bash -lc \
+            'cmake -S /src -B /tmp/build && cmake --build /tmp/build -j 2 && cd /tmp/build && ./ppm_tests'

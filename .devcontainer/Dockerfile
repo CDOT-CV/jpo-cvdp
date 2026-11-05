@@ -1,15 +1,15 @@
-# See here for image contents: https://github.com/microsoft/vscode-dev-containers/tree/v0.224.2/containers/cpp/.devcontainer/base.Dockerfile
+# Image contents: https://github.com/devcontainers/images/tree/main/src/cpp
 
-# [Choice] Debian / Ubuntu version (use Debian 11, Ubuntu 18.04/21.04 on local arm64/Apple Silicon): debian-11, debian-10, ubuntu-21.04, ubuntu-20.04, ubuntu-18.04
-ARG VARIANT="bullseye"
-FROM mcr.microsoft.com/vscode/devcontainers/cpp:0-${VARIANT}
+# Use the current stable Debian C++ development environment.
+ARG VARIANT="trixie"
+FROM mcr.microsoft.com/devcontainers/cpp:3-${VARIANT}
 
 # [Optional] Install CMake version different from what base image has already installed. 
-# CMake reinstall choices: none, 3.21.5, 3.22.2, or versions from https://cmake.org/download/
+# Use the bundled CMake by default; optional versions: https://cmake.org/download/
 ARG REINSTALL_CMAKE_VERSION_FROM_SOURCE="none"
 
 # Optionally install the cmake for vcpkg
-COPY ./reinstall-cmake.sh /tmp/
+COPY .devcontainer/reinstall-cmake.sh /tmp/
 RUN if [ "${REINSTALL_CMAKE_VERSION_FROM_SOURCE}" != "none" ]; then \
         /tmp/reinstall-cmake.sh ${REINSTALL_CMAKE_VERSION_FROM_SOURCE}; \
     fi \
@@ -22,8 +22,12 @@ RUN if [ "${REINSTALL_CMAKE_VERSION_FROM_SOURCE}" != "none" ]; then \
 # RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 #     && apt-get -y install --no-install-recommends <your-package-list-here>
 
-RUN apt-get update
-RUN apt-get install -y libsasl2-dev libsasl2-modules libssl-dev librdkafka-dev
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cmake g++ make git pkg-config ca-certificates libcurl4-openssl-dev \
+    libsasl2-dev libsasl2-modules libssl-dev liblz4-dev libzstd-dev zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+COPY scripts/install_librdkafka.sh /tmp/install_librdkafka.sh
+RUN sh /tmp/install_librdkafka.sh && ldconfig
 
-ENV REDACTION_PROPERTIES_PATH /workspaces/jpo-cvdp/config/fieldsToRedact.txt
-ENV RPM_DEBUG true
+ENV REDACTION_PROPERTIES_PATH=/workspaces/jpo-cvdp/config/fieldsToRedact.txt
+ENV RPM_DEBUG=true

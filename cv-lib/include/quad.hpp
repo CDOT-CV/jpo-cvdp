@@ -26,6 +26,7 @@
 #ifndef CVDP_DI_QUAD_HPP
 #define CVDP_DI_QUAD_HPP
 
+#include <cstdint>
 #include <iostream>
 #include <fstream>
 #include <sstream>

@@ -372,9 +372,7 @@ usage:
         conf->set("sasl.username", username.c_str(), error_string);
         conf->set("sasl.password", password.c_str(), error_string);
         // conf->set("debug", "all", error_string);
-        conf->set("api.version.request", "true", error_string);
-        conf->set("api.version.fallback.ms", "0", error_string);
-        conf->set("broker.version.fallback", "0.10.0.0", error_string);
+        // Use librdkafka defaults to negotiate the broker API versions.
 
         logger->info("Finished setting up Confluent Cloud configuration key/value pairs for Kafka Consumer.");
     }

@@ -1,50 +1,36 @@
 name: jpo-cvdp
-on: 
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, reopened, synchronize]
   push:
+    branches: [develop, master]
 
 jobs:
   jpo-cvdp:
     runs-on: ubuntu-latest
     container:
-      image: ubuntu:jammy-20230126
+      image: ubuntu:26.04
       env:
         REDACTION_PROPERTIES_PATH: "/__w/jpo-cvdp/jpo-cvdp/config/fieldsToRedact.txt"  # This env vairable is used to run ppm test
-        BUILD_WRAPPER_OUT_DIR: "$GITHUB_WORKSPACE/bw-output" # This env variable is needed to run SonarSource/sonarcloud-github-c-cpp@v1
+        BUILD_WRAPPER_OUT_DIR: "$GITHUB_WORKSPACE/bw-output" # Output directory used by the Sonar Build Wrapper
       options: "--user root"
     steps:
       - name: checkout code
         uses: actions/checkout@v4 # This action to checkout the code
-      - name: Install Deps
+      - name: Install build dependencies
         run: |
-          apt update
-          apt-get -y install sudo wget curl gnupg lsb-release gcovr unzip
-          sudo apt-get -y install software-properties-common
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-          sudo add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  stable"
-          sudo curl -L "https://github.com/docker/compose/releases/download/1.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          chmod +x /usr/local/bin/docker-compose
-          sudo apt-get -y update
-          sudo apt-get -y install docker-ce   
-          sudo apt-get install -y libcurl4-openssl-dev
-      - name: set up Cmake
-        uses: jwlawson/actions-setup-cmake@v2  # this action is used to setup and install Cmake with required versions
-        with:
-          cmake-version: '3.16'  
-      - name: install g++
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential cmake git pkg-config ca-certificates wget curl gnupg \
+            lsb-release gcovr unzip libcurl4-openssl-dev libsasl2-dev libsasl2-modules \
+            libssl-dev liblz4-dev libzstd-dev zlib1g-dev libprotobuf-dev protobuf-compiler
+      - name: Install librdkafka
         run: |
-          sudo apt-get -y install build-essential
-          sudo apt -y install cmake g++ libprotobuf-dev protobuf-compiler
-          sudo apt -y install apt-transport-https ca-certificates curl software-properties-common
-          export CXX="g++"          
-      - name: install librdkafka # This is to install librdkafka package
-        run: |
-          git clone --depth 1 https://github.com/confluentinc/librdkafka.git librdkafka
-          cd librdkafka
-          cmake -H. -B_cmake_build
-          cmake --build _cmake_build
-          cmake --build _cmake_build --target install  
-      - name: Install sonar-scanner and build-wrapper
-        uses: sonarsource/sonarcloud-github-c-cpp@v3  # This Action Installs sonar cloud and build wrapper to run sonar scan analysis  
+          sh scripts/install_librdkafka.sh
+          ldconfig
+      - name: Install Sonar Build Wrapper
+        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
       - name: Build and Generate test coverage
         run: |
           cd $GITHUB_WORKSPACE
@@ -55,8 +41,10 @@ jobs:
           build-wrapper-linux-x86-64 --out-dir $GITHUB_WORKSPACE/bw-output ./build.sh     
           mkdir coverage
           cd coverage 
-          gcov $GITHUB_WORKSPACE/cv-lib/src/*.cpp --object-directory /__w/jpo-cvdp/jpo-cvdp/build/cv-lib/CMakeFiles/CVLib.dir/src/
-          gcov $GITHUB_WORKSPACE/src/*.cpp --object-directory /__w/jpo-cvdp/jpo-cvdp/build/CMakeFiles/ppm_tests.dir/src/              
+          # Collect only files compiled into the coverage targets, including nested sources.
+          find "$GITHUB_WORKSPACE/build/cv-lib/CMakeFiles/CVLib.dir" \
+            "$GITHUB_WORKSPACE/build/CMakeFiles/ppm_tests.dir" \
+            -type f -name '*.gcno' -exec gcov --preserve-paths {} +
       - name: Archive code coverage results
         uses: actions/upload-artifact@v4 # This action is used to capture the test artifacts and exits if no files are found
         with:
@@ -68,22 +56,32 @@ jobs:
         with: 
           name: jpo-cvdp-buildwrapper-output
           path: /home/runner/work/jpo-cvdp/jpo-cvdp/bw-output       
-      - name: Setup SonarScanner
-        uses: warchant/setup-sonar-scanner@v7 # This action is used to setup sonar scanner with required versions.
+      - name: Check Sonar availability
+        id: sonar
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -n "$SONAR_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Generate sonar properties file
+        if: steps.sonar.outputs.enabled == 'true'
         run: |
           cat <<EOF > /tmp/sonar-scanner.properties
           sonar.host.url=https://sonarcloud.io
           sonar.projectName=jpo-cvdp
           sonar.projectVersion=1.0
-          sonar.projectKey=usdot-jpo-ode_jpo-cvdp
-          sonar.organization=usdot-jpo-ode
+          sonar.projectKey=${{ github.repository_owner }}_jpo-cvdp
+          sonar.organization=${{ vars.SONAR_ORGANIZATION || github.repository_owner }}
           sonar.sources=.
-          sonar.exclusions=src/ppm.cpp
           sonar.cfamily.build-wrapper-output=bw-output
-          sonar.cfamily.gcov.reportsPath=/__w/jpo-cvdp/jpo-cvdp/coverage/
-          sonar.sonar.projectBaseDir=/home/runner/work/jpo-cvdp/jpo-cvdp/
-          sonar.exclusions=**/*.java
+          sonar.cfamily.gcov.reportsPath=$GITHUB_WORKSPACE/coverage
+          sonar.projectBaseDir=$GITHUB_WORKSPACE
+          # Build artifacts are inputs to coverage analysis, not additional source files.
+          sonar.exclusions=**/*.java,build/**,bw-output/**,coverage/**
           sonar.coverage.exclusions=**/*.java
           # Set Git as SCM sensor
           sonar.scm.disabled=true
@@ -92,9 +90,9 @@ jobs:
           sonar.sourceEncoding=UTF-8
           EOF
       - name: Run SonarScanner
-        if: github.event_name == 'pull_request' && github.repository_owner == 'usdot-jpo-ode'
-        uses: usdot-fhwa-stol/actions/sonar-scanner@main # This action runs the analysis using generated sonar gcov files and publish reports to respective sonarcloud project.
+        if: steps.sonar.outputs.enabled == 'true'
+        uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          sonar-properties-path: /tmp/sonar-scanner.properties
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
-          working-dir: $GITHUB_WORKSPACE                   
+          args: -Dproject.settings=/tmp/sonar-scanner.properties
